@@ -17,52 +17,66 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableWebSecurity
 public class SecurityConfig {
     @Autowired
-    public void configureGlobal(AuthenticationManagerBuilder auth)
-            throws Exception {
-        auth.inMemoryAuthentication().withUser("discUser")
-                .password("{noop}discPassword").roles("SYSTEM");
+    public void configureGlobal(AuthenticationManagerBuilder auth) {
+        auth.inMemoryAuthentication()
+                .withUser("discUser")
+                .password("{noop}discPassword")
+                .roles("SYSTEM");
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity
-                                                           http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(sessionManagement ->
                         sessionManagement.
-                                sessionCreationPolicy(SessionCreationPolicy.ALWAYS))
+                                sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorizeRequests ->
-                        authorizeRequests.requestMatchers(HttpMethod.GET, "/eureka/**")
-                                .hasRole("SYSTEM")
-                                .requestMatchers(HttpMethod.POST, "/eureka/**")
-                                .hasRole("SYSTEM")
-                                .requestMatchers(HttpMethod.PUT, "/eureka/**")
-                                .hasRole("SYSTEM")
-                                .requestMatchers(HttpMethod.DELETE, "/eureka/**")
-                                .hasRole("SYSTEM")
+                        authorizeRequests
+                                .requestMatchers("/eureka/apps/**").hasRole("SYSTEM")
                                 .anyRequest().authenticated())
                 .httpBasic(Customizer.withDefaults());
         return http.build();
     }
-    
+
     @Configuration
     public static class AdminSecurityConfig {
-        public void configureGlobal(AuthenticationManagerBuilder auth)
-                throws Exception {
-            auth.inMemoryAuthentication();
+
+        @Autowired
+        public void configureGlobal(AuthenticationManagerBuilder auth) {
+            auth.inMemoryAuthentication()
+                    .withUser("admin")
+                    .password("{noop}admin")
+                    .roles("ADMIN");
         }
 
         @Bean
         @Order(1)
         public SecurityFilterChain configure(HttpSecurity http) throws Exception {
-            http.securityMatcher("/", "/info", "/health")
+            http.securityMatcher("/",
+                            "/info",
+                            "/health",
+                            "/webjars/**",
+                            "/eureka",
+                            "/eureka/",
+                            "/eureka/css/**",
+                            "/eureka/js/**",
+                            "/eureka/images/**")
                     .sessionManagement(sessionManagement ->
-                            sessionManagement
-                                    .sessionCreationPolicy(SessionCreationPolicy.NEVER))
-                    .httpBasic(AbstractHttpConfigurer::disable)
-                    .authorizeHttpRequests(authorize -> authorize
-                            .requestMatchers(HttpMethod.GET, "/").hasRole("ADMIN")
-                            .requestMatchers("/info", "/health").authenticated()
-                            .anyRequest().denyAll())
+                            sessionManagement.sessionCreationPolicy(SessionCreationPolicy.NEVER))
+                    .httpBasic(Customizer.withDefaults())
+                    .authorizeHttpRequests(authorize ->
+                            authorize
+                                    .requestMatchers("/info", "/health").authenticated()
+                                    .requestMatchers(HttpMethod.GET,
+                                            "/",
+                                            "/webjars/**",
+                                            "/eureka",
+                                            "/eureka/",
+                                            "/eureka/css/**",
+                                            "/eureka/js/**",
+                                            "/eureka/images/**")
+                                    .hasRole("ADMIN")
+                                    .anyRequest().denyAll())
                     .csrf(AbstractHttpConfigurer::disable);
             return http.build();
         }
